@@ -1,4 +1,6 @@
 
+const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\\.\\d\\+\\-]+)[\\s]+([\\w\\d]+)[\\s]+([\\w\\d\\-\\.\\:\\s\\,]+)')
+
 export function createAptWrapper(ssh) {
 
   async function execute(tool, command, argument = null) {
@@ -28,6 +30,23 @@ export function createAptWrapper(ssh) {
     },
     remove(packages) {
       return execute('apt-get', 'remove', packages)
+    },
+    async getInfo(packageName) {
+      try {
+        const output = await execute('dpkg -l', packageName, '| grep ' + packageName)
+        const [, name, version, arch, description] = output.match(versionOutputRegex)
+        return {
+          name,
+          version,
+          arch,
+          description,
+          installed: true
+        }
+      } catch(err) {
+        return {
+          installed: false
+        }
+      }
     },
     purge(packages) {
       return execute('apt-get', 'purge', packages)

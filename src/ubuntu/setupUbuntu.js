@@ -24,12 +24,18 @@ export async function setupUbuntu(distro, ssh) {
   const apt = createAptWrapper(ssh)
   const systemd = createSystemDWrapper(ssh)
 
-  // await apt.addRepository('ppa:nginx/stable')
+  await apt.addRepository('ppa:nginx/stable')
   // console.log('Nginx repo added')
   // await apt.update()
   // await apt.upgrade()
-  // await apt.install('nginx')
-  // console.log('nginx installed')
+  const nginxInfo = await apt.getInfo('nginx')
+  if (!nginxInfo.installed) {
+    await apt.install('nginx')
+    console.log('nginx installed')
+  } else {
+    console.log('Nginx already installed version ' + nginxInfo.version)
+  }
+  console.log(nginxInfo)
   const nginxServiceStatus = await systemd.status('nginx')
   console.log(nginxServiceStatus)
   !nginxServiceStatus.enabled && await systemd.enable('nginx')

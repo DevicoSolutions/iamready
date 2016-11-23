@@ -32,7 +32,6 @@ export function createSystemDWrapper(ssh) {
     },
     async status(service) {
       const output = await execute('systemctl', 'status', service)
-      console.log(output)
       return output.split('\n').reduce((target, line, index) => {
         if (firstLineRegex.test(line)) {
           const [,name, description] = line.match(firstLineRegex)
