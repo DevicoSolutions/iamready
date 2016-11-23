@@ -1,5 +1,6 @@
+import fs from 'fs'
 import {createSshAdapter} from './adapter/createSshAdapter'
-import {setupUbuntu} from './distros/setupUbuntu'
+import {setupUbuntu} from './ubuntu/setupUbuntu'
 
 const UBUNTU = 'Ubuntu'
 
@@ -13,13 +14,14 @@ async function detectDistro(ssh) {
   }
 }
 
+function loadConfiguration() {
+  const path = process.env.PWD + '/env.js'
+  return require(path)
+}
+
 async function setup() {
-  const ssh = createSshAdapter({
-    host: '0.0.0.0',
-    port: 22,
-    username: 'root',
-    password: 'adfsdafs'
-  })
+  const configuration = loadConfiguration()
+  const ssh = createSshAdapter(configuration)
   const distro = await detectDistro(ssh)
   switch(distro.name) {
     case UBUNTU:
