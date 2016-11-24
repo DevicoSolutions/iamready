@@ -4,7 +4,7 @@ const loadedRegex = new RegExp('Loaded\\: ([\\w]+) \\(([\\w\\/\\.\\-]+)\\; ([\\w
 const activeRegex = new RegExp('Active\\: ([\\w]+) \\(([\\w]+)\\) since [\\w]+ ([\\d\\-\\s\\:]+ [\\w\\/\\_]+)')
 
 export function createSystemDWrapper(logger, ssh) {
-  const systemdLogger = logger.createSubLogger(`[[blue:NVM]]`)
+  const systemdLogger = logger.createSubLogger(`[[blue:SystemD]]`)
 
   async function execute(tool, command, argument = null) {
     try {
