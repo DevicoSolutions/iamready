@@ -6,7 +6,7 @@ export function createAptWrapper(logger, ssh) {
 
   async function execute(tool, command, argument = null) {
     try {
-      return await ssh.execute(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y`)
+      return await ssh.execCommand(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y`, {})
     } catch (err) {
       throw err
     }
@@ -17,12 +17,11 @@ export function createAptWrapper(logger, ssh) {
       return aptLogger.waitFor('Installing packages ' + packages.green, execute('apt-get', 'install', packages), 'Installed ' + packages.green)
     },
     async addRepository(repo) {
-      try {
-        return await aptLogger.waitFor(`Adding repository [green:${repo}]`, execute('add-apt-repository', 'ppa:nginx/stable'))
-      } catch(err) {
-        aptLogger.log(repo.green + ' repo added')
-        return true
-      }
+      return await aptLogger.waitFor(
+        `Adding repository [green:${repo}]`,
+        execute('add-apt-repository', 'ppa:nginx/stable'),
+        repo.green + ' repo added'
+      )
     },
     update() {
       return aptLogger.waitFor('Updating packages list', execute('apt-get', 'update'))
@@ -34,8 +33,8 @@ export function createAptWrapper(logger, ssh) {
       return aptLogger.waitFor(`Uninstalling packages [green:${packages}]`, execute('apt-get', 'remove', packages), 'Uninstalled ' + packages.green)
     },
     async getInfo(packageName) {
-      try {
-        const output = await aptLogger.waitFor('Getting info about package ' + packageName.green, execute('dpkg -l', packageName, '| grep ' + packageName))
+      const {stdout: output} = await aptLogger.waitFor('Getting info about package ' + packageName.green, execute('dpkg -l', packageName, '| grep ' + packageName))
+      if (versionOutputRegex.test(output)) {
         const [, name, version, arch, description] = output.match(versionOutputRegex)
         aptLogger.log('  ' + packageName.green + ' already installed with version ' + version.yellow)
         return {
@@ -45,7 +44,7 @@ export function createAptWrapper(logger, ssh) {
           description,
           installed: true
         }
-      } catch(err) {
+      } else {
         aptLogger.log(packageName.green + ' not installed')
         return {
           installed: false

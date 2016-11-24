@@ -14,7 +14,7 @@ export function createLogger(prefix = "") {
       const interval = setInterval(() => {
         process.stdout.clearLine()
         process.stdout.cursorTo(0)
-        i = (i + 1) % (splinner.length - 1)
+        i = (i + 1) % (splinner.length - 2)
         var dots = splinner[i - 1] + ' '
         this.log(dots.cyan + text, false)
       }, 300)
