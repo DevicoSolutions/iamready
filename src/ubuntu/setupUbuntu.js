@@ -1,5 +1,8 @@
 import {createAptWrapper} from './createAptWrapper'
 import {createSystemDWrapper} from './createSystemDWrapper'
+import {createMariaDbWrapper} from './createMariaDbWrapper'
+import {createNvmWrapper} from './createNvmWrapper'
+import Logger from '../utils/logger'
 
 const ltsReleases = [
   '16.04',
@@ -12,34 +15,82 @@ const supportedReleases = [
   '17.04'
 ]
 
-export async function setupUbuntu(distro, ssh) {
-  console.log(`Found ${distro.name} ${distro.release}`)
+const kinds = {
+  async nginx({apt, systemd}, app) {
+    await apt.addRepository('ppa:nginx/stable')
+    const nginxInfo = await apt.getInfo('nginx')
+    if (!nginxInfo.installed) {
+      await apt.update()
+      await apt.install('nginx')
+    }
+    const nginxServiceStatus = await systemd.status('nginx')
+    if (!nginxServiceStatus.enabled) {
+      await systemd.enable('nginx')
+    } else {
+      Logger.log('  [green:nginx] already enabled')
+    }
+    if (nginxServiceStatus.running) {
+      await systemd.restart('nginx')
+    } else {
+      await systemd.start('nginx')
+    }
+  },
+  async node({ssh, nvm}, app) {
+    const config = app.config.node || {
+      version: 6
+    }
+    await nvm.install()
+    await nvm.installNode(config.version)
+    const nodeDir = await nvm.getNodeDir(config.version)
+    await nvm.registerInPath(nodeDir)
+  },
+  async mariadb({apt, systemd, mariadb}, app) {
+    const mariadbInfo = await apt.getInfo('mariadb-server')
+    if (!mariadbInfo.installed) {
+      const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
+      await apt.install('mariadb-server')
+      const mysqlServiceStatus = await systemd.status('mysql')
+      if (!mysqlServiceStatus.enabled) {
+        await systemd.enable('mysql')
+      }
+      if (mysqlServiceStatus.running) {
+        await systemd.restart('mysql')
+      } else {
+        await systemd.start('mysql')
+      }
+      await mariadb.setUserPassword(rootUser, rootPassword)
+      await mariadb.createUser(username, password)
+      await mariadb.createDatabase(database)
+      await mariadb.grantPrivilegesToDatabase(username, database)
+    }
+  }
+}
+
+export async function setupUbuntu(distro, ssh, app) {
   if (supportedReleases.indexOf(distro.release) === -1) {
     throw new Error('We don\'t support this version of Ubuntu')
   }
   if (ltsReleases.indexOf(distro.release) === -1) {
-    console.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use ${distro.release} version`)
+    Logger.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use [yellow:${distro.release}] version`.red)
   }
 
   const apt = createAptWrapper(ssh)
   const systemd = createSystemDWrapper(ssh)
-
-  await apt.addRepository('ppa:nginx/stable')
-  // console.log('Nginx repo added')
-  // await apt.update()
-  // await apt.upgrade()
-  const nginxInfo = await apt.getInfo('nginx')
-  if (!nginxInfo.installed) {
-    await apt.install('nginx')
-    console.log('nginx installed')
-  } else {
-    console.log('Nginx already installed version ' + nginxInfo.version)
+  const mariadb = createMariaDbWrapper(ssh, app)
+  const nvm = createNvmWrapper(ssh)
+  const ctx = {
+    apt,
+    systemd,
+    ssh,
+    mariadb,
+    nvm
   }
-  console.log(nginxInfo)
-  const nginxServiceStatus = await systemd.status('nginx')
-  console.log(nginxServiceStatus)
-  !nginxServiceStatus.enabled && await systemd.enable('nginx')
-  !nginxServiceStatus.running && await systemd.start('nginx')
-  // await apt.install('vim git mc htop mariadb-server')
-  // console.log('Installed: vim git mc htop mariadb-server')
+  await apt.install('vim mc htop curl build-essential git')
+  for (let kind of app.kinds) {
+    if (kinds.hasOwnProperty(kind)) {
+      await kinds[kind](ctx, app)
+    } else {
+      Logger.log(`[red:${kind}] kins is not implemented yet. Skipping`)
+    }
+  }
 }

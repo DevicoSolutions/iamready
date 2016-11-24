@@ -1,6 +1,8 @@
 import fs from 'fs'
 import {createSshAdapter} from './adapter/createSshAdapter'
 import {setupUbuntu} from './ubuntu/setupUbuntu'
+import 'colors'
+import Logger from './utils/logger'
 
 const UBUNTU = 'Ubuntu'
 
@@ -21,16 +23,21 @@ function loadConfiguration() {
 
 async function setup() {
   const configuration = loadConfiguration()
-  const ssh = createSshAdapter(configuration)
-  const distro = await detectDistro(ssh)
-  switch(distro.name) {
-    case UBUNTU:
-      await setupUbuntu(distro, ssh)
-      break
-    default: 
-      throw new Error(`${distro.name}:${distro.release} is not yet supported.`)
+  for (let key in configuration.servers) {
+    const config = configuration.servers[key]
+    const app = configuration.apps[key]
+    const ssh = createSshAdapter(config)
+    const distro = await Logger.waitFor('Detecting distro'.green, detectDistro(ssh))
+    Logger.log(`Found [green:${distro.name}] [yellow:${distro.release}]`)
+    switch(distro.name) {
+      case UBUNTU:
+        await setupUbuntu(distro, ssh, app)
+        break
+      default: 
+        throw new Error(`[green:${distro.name}]:[yellow:${distro.release}] is not yet supported.`)
+    }
+    ssh.end()
   }
-  ssh.end()
 }
 
 setup().then(

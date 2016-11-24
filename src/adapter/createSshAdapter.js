@@ -64,6 +64,9 @@ export function createSshAdapter(configuration) {
         }
       })
     },
+    execCommand(...options) {
+      return connection.execCommand(...options)
+    },
     end() {
       connection.dispose()
     }

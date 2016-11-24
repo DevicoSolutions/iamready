@@ -1,3 +1,5 @@
+import Logger from '../utils/logger'
+
 const firstLineRegex = new RegExp('● ([\\w\\.\\-]+) \\- ([\\w\\s\\.\\-]+)')
 const loadedRegex = new RegExp('Loaded\\: ([\\w]+) \\(([\\w\\/\\.\\-]+)\\; ([\\w]+)')
 const activeRegex = new RegExp('Active\\: ([\\w]+) \\(([\\w]+)\\) since [\\w]+ ([\\d\\-\\s\\:]+ [\\w\\/\\_]+)')
@@ -15,23 +17,23 @@ export function createSystemDWrapper(ssh) {
   return {
     async enable(service) {
       try {
-        return await execute('systemctl', 'enable', service)
+        return await Logger.waitFor('Enabling service ' + service.green, execute('systemctl', 'enable', service), 'Service ' + service.green + ' enabled')
       } catch(err) {
         return true
       }
     },
     async disable(service) {
       try {
-        return await execute('systemctl', 'disable', service)
+        return await Logger.waitFor('Disabling service ' + service.green, execute('systemctl', 'disable', service), 'Service ' + service.green + ' disabled')
       } catch(err) {
         return true
       }
     },
     start(service) {
-      return execute('systemctl', 'start', service)
+      return Logger.waitFor('Starting service ' + service.green, execute('systemctl', 'start', service), 'Service ' + service.green + ' started')
     },
     async status(service) {
-      const output = await execute('systemctl', 'status', service)
+      const output = await Logger.waitFor('Getting status for service ' + service.green, execute('systemctl', 'status', service))
       return output.split('\n').reduce((target, line, index) => {
         if (firstLineRegex.test(line)) {
           const [,name, description] = line.match(firstLineRegex)
@@ -62,10 +64,10 @@ export function createSystemDWrapper(ssh) {
       }, {})
     },
     stop(service) {
-      return execute('systemctl', 'stop', service)
+      return Logger.waitFor('Stoping service ' + service.green, execute('systemctl', 'stop', service), 'Service ' + service.green + ' stoped')
     },
     restart(service) {
-      return execute('systemctl', 'restart', service)
+      return Logger.waitFor('Restarting service ' + service.green, execute('systemctl', 'restart', service), 'Service ' + service.green + ' restarted')
     }
   }
 }
