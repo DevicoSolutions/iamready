@@ -25,18 +25,19 @@ async function setup() {
   const configuration = loadConfiguration()
   for (let key in configuration.servers) {
     const config = configuration.servers[key]
-    const app = configuration.apps[key]
-    const ssh = createSshAdapter(config)
-    const distro = await Logger.waitFor('Detecting distro'.green, detectDistro(ssh))
-    Logger.log(`Found [green:${distro.name}] [yellow:${distro.release}]`)
-    switch(distro.name) {
-      case UBUNTU:
-        await setupUbuntu(distro, ssh, app)
-        break
-      default: 
-        throw new Error(`[green:${distro.name}]:[yellow:${distro.release}] is not yet supported.`)
+    for (let credential of config.credentials) {
+      const ssh = createSshAdapter(credential)
+      const distro = await Logger.waitFor('Detecting distro'.green, detectDistro(ssh))
+      Logger.log(`Found [green:${distro.name}] [yellow:${distro.release}]`)
+      switch(distro.name) {
+        case UBUNTU:
+          await setupUbuntu(distro, ssh, config)
+          break
+        default: 
+          throw new Error(`[green:${distro.name}]:[yellow:${distro.release}] is not yet supported.`)
+      }
+      ssh.end()
     }
-    ssh.end()
   }
 }
 

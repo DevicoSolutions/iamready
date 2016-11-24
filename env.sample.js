@@ -3,19 +3,13 @@ const fs = require('fs')
 module.exports = {
   servers: {
     app: {
-      host: '0.0.0.0',
-      port: 22,
-      username: 'root',
-      privateKey: fs.readFileSync('/some/path').toString()
-    }
-  },
-  apps: {
-    app: {
+      credentials: [{// You can setup many servers with one configuration
+        host: '0.0.0.0',
+        port: 22,
+        username: 'root',
+        privateKey: fs.readFileSync('/path/to/private/key').toString()
+      }],
       kinds: ['nginx', 'node', 'mariadb'],
-      apt: {
-        repos: [],
-        install: []
-      },
       config: {
         node: {
           version: 6
@@ -27,6 +21,10 @@ module.exports = {
           database: 'minorm2_example'
         }
       },
+    }
+  },
+  apps: {
+    app: {
       port: 80,
       env: {
         NODE_ENV: 'production',
