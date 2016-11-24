@@ -2,7 +2,6 @@ import {createAptWrapper} from './createAptWrapper'
 import {createSystemDWrapper} from './createSystemDWrapper'
 import {createMariaDbWrapper} from './createMariaDbWrapper'
 import {createNvmWrapper} from './createNvmWrapper'
-import Logger from '../utils/logger'
 
 const ltsReleases = [
   '16.04',
@@ -26,8 +25,6 @@ const kinds = {
     const nginxServiceStatus = await systemd.status('nginx')
     if (!nginxServiceStatus.enabled) {
       await systemd.enable('nginx')
-    } else {
-      Logger.log('  [green:nginx] already enabled')
     }
     if (nginxServiceStatus.running) {
       await systemd.restart('nginx')
@@ -66,20 +63,21 @@ const kinds = {
   }
 }
 
-export async function setupUbuntu(distro, ssh, app) {
+export async function setupUbuntu(distro, ssh, app, logger) {
   if (supportedReleases.indexOf(distro.release) === -1) {
     throw new Error('We don\'t support this version of Ubuntu')
   }
   if (ltsReleases.indexOf(distro.release) === -1) {
-    Logger.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use [yellow:${distro.release}] version`.red)
+    logger.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use [yellow:${distro.release}] version`.red)
   }
 
-  const apt = createAptWrapper(ssh)
-  const systemd = createSystemDWrapper(ssh)
-  const mariadb = createMariaDbWrapper(ssh, app)
-  const nvm = createNvmWrapper(ssh)
+  const apt = createAptWrapper(logger, ssh)
+  const systemd = createSystemDWrapper(logger, ssh)
+  const mariadb = createMariaDbWrapper(logger, ssh, app)
+  const nvm = createNvmWrapper(logger, ssh)
   const ctx = {
     apt,
+    logger,
     systemd,
     ssh,
     mariadb,
@@ -90,7 +88,7 @@ export async function setupUbuntu(distro, ssh, app) {
     if (kinds.hasOwnProperty(kind)) {
       await kinds[kind](ctx, app)
     } else {
-      Logger.log(`[red:${kind}] kins is not implemented yet. Skipping`)
+      logger.log(`[red:${kind}] kind is not implemented yet. Skipping`)
     }
   }
 }
