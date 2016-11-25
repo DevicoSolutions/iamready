@@ -8,7 +8,7 @@ export function createSystemDWrapper(logger, ssh) {
   const systemctl = ssh.wrapCommand('systemctl', {
     methods: ['enable', 'disable', 'start', 'stop', 'status', 'restart'],
     sudo: true
-  })
+  }, false)
 
   return {
     async enable(service) {

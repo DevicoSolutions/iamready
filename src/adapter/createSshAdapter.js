@@ -3,6 +3,8 @@ import Client from 'node-ssh'
 const SHELL_COMMAND = 'SHELL_COMMAND'
 const DIRECTORY_LIST = 'DIRECTORY_LIST'
 
+const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git']
+
 export function createSshAdapter(configuration) {
   const connection = new Client
   let ready = false
@@ -42,18 +44,12 @@ export function createSshAdapter(configuration) {
 
   function onReady() {
     ready = true
-    // connection.once('session', accept => {
-    //   const session = accept()
-    //   session.once('pty', (...opts) => {
-    //     console.log(...opts)
-    //   })
-    // })
     if (queue.length) {
       executeQueue()
     }
   }
 
-  connection.connect(configuration).then(
+  const readyPromise = connection.connect(configuration).then(
     onReady,
     err => console.log('Error', err)
   )
@@ -107,51 +103,69 @@ export function createSshAdapter(configuration) {
     })
   }
 
-  return {
+  const adapter = {
     isReady: () => ready,
-    execute(text, options = {}) {
-      return new Promise((resolve, reject) => {
-        queue.push({
-          type: SHELL_COMMAND,
-          resolve,
-          reject,
-          text,
-          options
-        })
-        if (ready && !underExecution) {
-          executeQueue()
-        }
-      })
+    ready() {
+      return readyPromise
     },
-    wrapCommand(command, defaultOptions = {}) {
-      if (defaultOptions.sudo && configuration.username !== 'root') {
-        command = 'sudo ' + command
-        defaultOptions.pty = pty
+    async execute(text, options = {}) {
+      const {stdout, stderr, code} = await execCommand(text, options)
+      if (code === 0) {
+        return stdout
+      } else {
+        throw stderr
       }
-      if (defaultOptions.env) {
-        command = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + command
-      }
-      const client = {
-        exec(instruction, args = [], options = {}) {
-          return execCommand(command + ' ' + instruction + args.join(' '), {...defaultOptions, ...options})
-        },
-        execCommand(instruction, options = {}) {
-          return execCommand(command + ' ' + instruction, {...defaultOptions, ...options})
-        }
-      }
-      if (defaultOptions.methods) {
-        defaultOptions.methods.forEach(method => {
-          client[method] = (instruction, options) => client.execCommand(method + ' ' + instruction, options)
-        })
-      }
-
-      return client
     },
     execCommand(...options) {
       return connection.execCommand(...options)
     },
     end() {
       connection.dispose()
+    },
+    wrapCommand(command, defaultOptions = {}, inject = true) {
+      if (typeof defaultOptions === 'number') { // Fix for array index
+        defaultOptions = {}
+      }
+      if (typeof inject === 'object') {
+        inject = true
+      }
+      let target = inject ? adapter : {}
+      const name = command.indexOf('-') === -1 ? command : command.replace(/\-([a-z])/g, (_, part) => part.toUpperCase())
+      injectMethods(target, command, '', defaultOptions)
+      if (defaultOptions.methods) {
+        defaultOptions.methods.forEach(method => injectMethods(target[name], method, command, defaultOptions))
+      }
+      return target[name]
     }
   }
+
+  function injectMethods(target, method, command = '', defaultOptions = {}) {
+    const name = method.indexOf('-') === -1 ? method : method.replace(/\-([a-z])/g, (_, part) => part.toUpperCase())
+    let action = command != '' ? command + ' ' + method + ' ' : method + ' '
+    if (defaultOptions.sudo && configuration.username !== 'root') {
+      action = 'sudo ' + action
+      defaultOptions.pty = pty
+    }
+    target[name] = (...params) => {
+      if (defaultOptions.env) {
+        action = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + action
+      }
+      return execCommand(action + params.join(' '), defaultOptions)
+    }
+    if (configuration.username !== 'root') {
+      target[name].sudo = (...params) => {
+        const sudoAction = 'sudo ' + action
+        if (defaultOptions.env) {
+          sudoAction = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + sudoAction
+        }
+        return execCommand(sudoAction + params.join(' '), {...defaultOptions, pty})
+      }
+    } else {
+      target[name].sudo = target[name]
+    }
+  }
+
+  oneLineCommands.forEach(adapter.wrapCommand)
+
+  return adapter
 }

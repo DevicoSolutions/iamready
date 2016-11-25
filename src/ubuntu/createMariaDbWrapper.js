@@ -4,6 +4,18 @@ const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\
 
 export function createMariaDbWrapper(logger, ssh, app) {
   const mariaLogger = logger.createSubLogger(`[[blue:MariaDb]]`)
+  const mariadbadmin = ssh.wrapCommand('mysqladmin', {
+    sudo: true,
+    env: {
+      DEBIAN_FRONTEND: 'noninteractive'
+    }
+  }, false)
+  const mariadb = ssh.wrapCommand('mysql', {
+    sudo: true,
+    env: {
+      DEBIAN_FRONTEND: 'noninteractive'
+    }
+  }, false)
   const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
 
   async function execute(tool, command, argument = null) {
@@ -16,7 +28,7 @@ export function createMariaDbWrapper(logger, ssh, app) {
 
   async function query(sql) {
     try {
-      return await ssh.execute(`DEBIAN_FRONTEND=noninteractive mysql -u${rootUser} -p${rootPassword} -e "${sql}"`)
+      return await mariadb(`-u${rootUser} -p${rootPassword} -e "${sql}"`)
     } catch (err) {
       throw err
     }
@@ -26,7 +38,7 @@ export function createMariaDbWrapper(logger, ssh, app) {
     setUserPassword(username, newPassword) {
       return mariaLogger.waitFor(
         `Setting [yellow:${username}] password`,
-        execute('mysqladmin', '-u' + username + ' password', newPassword),
+        mariadbadmin('-u' + username + ' password ' + newPassword),
         `Password for [yellow:${username}] changed`
       )
     },

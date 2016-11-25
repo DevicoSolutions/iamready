@@ -3,14 +3,8 @@ const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\
 
 export function createAptWrapper(logger, ssh) {
   const aptLogger = logger.createSubLogger(`[[blue:Apt]]`)
-  const aptget = ssh.wrapCommand('apt-get', {
+  ssh.wrapCommand('apt-get', {
     methods: ['install', 'update', 'upgrade', 'remove', 'purge'],
-    sudo: true,
-    env: {
-      DEBIAN_FRONTEND: 'noninteractive'
-    }
-  })
-  const dpkg = ssh.wrapCommand('dpkg', {
     sudo: true,
     env: {
       DEBIAN_FRONTEND: 'noninteractive'
@@ -29,7 +23,7 @@ export function createAptWrapper(logger, ssh) {
     install(packages) {
       return aptLogger.waitFor(
         'Installing packages ' + packages.green,
-        aptget.install(packages + ' -y'),
+        ssh.aptGet.install(packages + ' -y'),
         'Installed ' + packages.green
       )
     },
@@ -41,22 +35,22 @@ export function createAptWrapper(logger, ssh) {
       )
     },
     update() {
-      return aptLogger.waitFor('Updating packages list', aptget.update(' -y'))
+      return aptLogger.waitFor('Updating packages list', ssh.aptGet.update(' -y'))
     },
     upgrade() {
-      return aptLogger.waitFor('Upgrading packages to latest versions', aptget.upgrade(' -y'))
+      return aptLogger.waitFor('Upgrading packages to latest versions', ssh.aptGet.upgrade(' -y'))
     },
     remove(packages) {
       return aptLogger.waitFor(
         `Uninstalling packages [green:${packages}]`,
-        aptget.remove(packages + ' -y'),
+        ssh.aptGet.remove(packages + ' -y'),
         'Uninstalled ' + packages.green
       )
     },
     async getInfo(packageName) {
       let {stdout: output, code} = await aptLogger.waitFor(
         'Getting info about package ' + packageName.green,
-        dpkg.execCommand('-l ' + packageName + ' | grep ' + packageName)
+        ssh.dpkg('-l ' + packageName + ' | grep ' + packageName)
       )
       output = output.split('\n').pop()
       if (code == 0 && versionOutputRegex.test(output)) {
@@ -79,7 +73,7 @@ export function createAptWrapper(logger, ssh) {
     purge(packages) {
       return aptLogger.waitFor(
         'Purge packages ' + packages.green,
-        aptget.purge(packages + ' -y')
+        ssh.aptGet.purge(packages + ' -y')
       )
     }
   }

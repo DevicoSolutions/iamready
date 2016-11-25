@@ -38,6 +38,7 @@ const kinds = {
     }
     await nvm.install()
     await nvm.installNode(config.version)
+    await nvm.setDefaultNode(config.version)
     const nodeDir = await nvm.getNodeDir(config.version)
     await nvm.registerInPath(nodeDir)
   },
@@ -63,6 +64,8 @@ const kinds = {
   }
 }
 
+const oneLineCommands = ['dpkg']
+
 export async function setupUbuntu(distro, ssh, app, logger) {
   if (supportedReleases.indexOf(distro.release) === -1) {
     throw new Error('We don\'t support this version of Ubuntu')
@@ -70,6 +73,11 @@ export async function setupUbuntu(distro, ssh, app, logger) {
   if (ltsReleases.indexOf(distro.release) === -1) {
     logger.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use [yellow:${distro.release}] version`.red)
   }
+  ssh.wrapCommand('dpkg', {
+    env: {
+      DEBIAN_FRONTEND: 'noninteractive'
+    }
+  })
 
   const apt = createAptWrapper(logger, ssh)
   const systemd = createSystemDWrapper(logger, ssh)
