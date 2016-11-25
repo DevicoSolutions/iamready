@@ -7,8 +7,8 @@ import Logger, {createLogger} from './utils/logger'
 const UBUNTU = 'Ubuntu'
 
 async function detectDistro(ssh) {
-  const lsbRelease = await ssh.execute('cat /etc/lsb-release')
-  const [name, release, codeName] = lsbRelease.split('\n').map(line => line.split('=')[1])
+  const {stdout: lsbRelease} = await ssh.cat('/etc/lsb-release')
+  const [name, release, codeName] = lsbRelease.split('\n').map(line => line.split('=')[1].trim())
   return {
     name,
     release,

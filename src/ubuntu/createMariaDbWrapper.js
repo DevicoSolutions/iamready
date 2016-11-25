@@ -11,16 +11,15 @@ export function createMariaDbWrapper(logger, ssh, app) {
     }
   }, false)
   const mariadb = ssh.wrapCommand('mysql', {
-    sudo: true,
     env: {
       DEBIAN_FRONTEND: 'noninteractive'
     }
   }, false)
   const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
 
-  async function execute(tool, command, argument = null) {
+  async function querySudo(sql) {
     try {
-      return await ssh.execute(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""}`)
+      return await mariadb.sudo(`-u${rootUser} -p${rootPassword} -e "${sql}"`)
     } catch (err) {
       throw err
     }
@@ -28,7 +27,7 @@ export function createMariaDbWrapper(logger, ssh, app) {
 
   async function query(sql) {
     try {
-      return await mariadb(`-u${rootUser} -p${rootPassword} -e "${sql}"`)
+      return await mariadb.sudo(`-u${username} -p${password} -D${database} -e "${sql}"`)
     } catch (err) {
       throw err
     }
@@ -45,24 +44,36 @@ export function createMariaDbWrapper(logger, ssh, app) {
     createUser(username, password) {
       return mariaLogger.waitFor(
         `Creation user [yellow:${username}]`,
-        query(`CREATE USER '${username}'@'localhost' IDENTIFIED BY '${password}';`), `User created [yellow:${username}]`
+        querySudo(`CREATE USER '${username}'@'localhost' IDENTIFIED BY '${password}';`), `User created [yellow:${username}]`
       )
     },
     createDatabase(database) {
       return mariaLogger.waitFor(
         `Creation database [yellow:${database}]`,
-        query(`CREATE DATABASE ${database} CHARACTER SET utf8 COLLATE utf8_general_ci;`), `Database created [yellow:${database}]`
+        querySudo(`CREATE DATABASE ${database} CHARACTER SET utf8 COLLATE utf8_general_ci;`), `Database created [yellow:${database}]`
       )
     },
     async grantPrivilegesToDatabase(username, database) {
       await mariaLogger.waitFor(
         'Granting privileges to database [yellow:${database}]',
-        query(`GRANT ALL ON ${database}.* TO '${username}'@'localhost';`)
+        querySudo(`GRANT ALL ON ${database}.* TO '${username}'@'localhost';`)
       )
       await mariaLogger.waitFor(
         'Flushing privileges',
-        query(`FLUSH PRIVILEGES;`)
+        querySudo(`FLUSH PRIVILEGES;`)
       )
+    },
+    async getUsers() {
+      const {stdout} = await querySudo('SELECT User FROM mysql.user;')
+      return stdout.split('\n')
+        .filter(line => line.indexOf('--') === -1 && line.indexOf(' User ') === -1)
+        .map(user => user.replace(/\|/g, '').trim())
+    },
+    async getDatabases() {
+      const {stdout} = await querySudo('SHOW DATABASES;')
+      return stdout.split('\n')
+        .filter(line => line.indexOf('--') === -1 && line.indexOf(' Database ') === -1)
+        .map(user => user.replace(/\|/g, '').trim())
     }
   }
 }

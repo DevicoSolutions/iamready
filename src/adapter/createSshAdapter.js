@@ -36,7 +36,7 @@ export function createSshAdapter(configuration) {
     cols: 150,
     width: 0,
     height: 0,
-    term: 'vt220',
+    term: 'xterm',
     modes: {}
   }
 
@@ -51,13 +51,14 @@ export function createSshAdapter(configuration) {
     }
     const output = { stdout: [], stderr: [] }
     return await new Promise(function(resolve, reject) {
-      connection.connection.exec(command, options, generateCallback(function(stream) {
+      connection.connection.exec(command, {pty, ...options}, generateCallback(function(stream) {
         stream.on('data', function(chunk) {
           const line = chunk.toString()
           if (line.indexOf('[sudo] password') !== -1) {
             stream.write(configuration.password + '\n')
+          } else {
+            output.stdout.push(chunk)
           }
-          output.stdout.push(chunk)
         })
         stream.stderr.on('data', function(chunk) {
           output.stderr.push(chunk)
@@ -114,7 +115,6 @@ export function createSshAdapter(configuration) {
     let action = command != '' ? command + ' ' + method + ' ' : method + ' '
     if (defaultOptions.sudo && configuration.username !== 'root') {
       action = 'sudo ' + action
-      defaultOptions.pty = pty
     }
     target[name] = (...params) => {
       return execCommand(action + params.join(' '), defaultOptions)
@@ -122,7 +122,7 @@ export function createSshAdapter(configuration) {
     if (configuration.username !== 'root') {
       target[name].sudo = (...params) => {
         const sudoAction = 'sudo ' + action
-        return execCommand(sudoAction + params.join(' '), {...defaultOptions, pty})
+        return execCommand(sudoAction + params.join(' '), defaultOptions)
       }
     } else {
       target[name].sudo = target[name]

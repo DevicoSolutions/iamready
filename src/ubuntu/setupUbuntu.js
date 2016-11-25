@@ -44,8 +44,8 @@ const kinds = {
   },
   async mariadb({apt, systemd, mariadb}, app) {
     const mariadbInfo = await apt.getInfo('mariadb-server')
+    const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
     if (!mariadbInfo.installed) {
-      const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
       await apt.install('mariadb-server')
       const mysqlServiceStatus = await systemd.status('mysql')
       if (!mysqlServiceStatus.enabled) {
@@ -57,8 +57,16 @@ const kinds = {
         await systemd.start('mysql')
       }
       await mariadb.setUserPassword(rootUser, rootPassword)
+    }
+    const users = await mariadb.getUsers()
+    const databases = await mariadb.getDatabases()
+    if (users.indexOf(username) === -1) {
       await mariadb.createUser(username, password)
+    }
+    if (databases.indexOf(database) === -1) {
       await mariadb.createDatabase(database)
+      await mariadb.grantPrivilegesToDatabase(username, database)
+    } else if (users.indexOf(username) === -1) {
       await mariadb.grantPrivilegesToDatabase(username, database)
     }
   }
