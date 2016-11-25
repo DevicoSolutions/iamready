@@ -1,15 +1,20 @@
 
 const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\\.\\d\\+\\-]+)[\\s]+([\\w\\d]+)[\\s]+([\\w\\d\\-\\.\\:\\s\\,]+)')
 
-export function createAptWrapper(logger, ssh) {
+export function createAptWrapper({logger, ssh}) {
   const aptLogger = logger.createSubLogger(`[[blue:Apt]]`)
-  ssh.wrapCommand('apt-get', {
+  const aptGet = ssh.wrapCommand('apt-get', {
     methods: ['install', 'update', 'upgrade', 'remove', 'purge'],
     sudo: true,
     env: {
       DEBIAN_FRONTEND: 'noninteractive'
     }
-  })
+  }, false)
+  const dpkg = ssh.wrapCommand('dpkg', {
+    env: {
+      DEBIAN_FRONTEND: 'noninteractive'
+    }
+  }, false)
 
   async function execute(tool, command, argument = null) {
     try {
@@ -20,11 +25,11 @@ export function createAptWrapper(logger, ssh) {
   }
 
   return {
-    install(packages) {
+    install(repos) {
       return aptLogger.waitFor(
-        'Installing packages ' + packages.green,
-        ssh.aptGet.install(packages + ' -y'),
-        'Installed ' + packages.green
+        'Installing repos ' + repos.green,
+        aptGet.install(repos + ' -y'),
+        'Installed ' + repos.green
       )
     },
     async addRepository(repo) {
@@ -35,27 +40,27 @@ export function createAptWrapper(logger, ssh) {
       )
     },
     update() {
-      return aptLogger.waitFor('Updating packages list', ssh.aptGet.update(' -y'))
+      return aptLogger.waitFor('Updating repos list', aptGet.update(' -y'))
     },
     upgrade() {
-      return aptLogger.waitFor('Upgrading packages to latest versions', ssh.aptGet.upgrade(' -y'))
+      return aptLogger.waitFor('Upgrading repos to latest versions', aptGet.upgrade(' -y'))
     },
-    remove(packages) {
+    remove(repos) {
       return aptLogger.waitFor(
-        `Uninstalling packages [green:${packages}]`,
-        ssh.aptGet.remove(packages + ' -y'),
-        'Uninstalled ' + packages.green
+        `Uninstalling repos [green:${repos}]`,
+        aptGet.remove(repos + ' -y'),
+        'Uninstalled ' + repos.green
       )
     },
-    async getInfo(packageName) {
+    async getInfo(repoName) {
       let {stdout: output, code} = await aptLogger.waitFor(
-        'Getting info about package ' + packageName.green,
-        ssh.dpkg('-l ' + packageName + ' | grep ' + packageName)
+        'Getting info about repo ' + repoName.green,
+        dpkg('-l ' + repoName + ' | grep ' + repoName)
       )
       output = output.split('\n').pop()
       if (code == 0 && versionOutputRegex.test(output)) {
         const [, name, version, arch, description] = output.match(versionOutputRegex)
-        aptLogger.log('  ' + packageName.green + ' already installed with version ' + version.yellow)
+        aptLogger.log('  ' + repoName.green + ' already installed with version ' + version.yellow)
         return {
           name,
           version,
@@ -64,16 +69,16 @@ export function createAptWrapper(logger, ssh) {
           installed: true
         }
       } else {
-        aptLogger.log(packageName.green + ' not installed')
+        aptLogger.log(repoName.green + ' not installed')
         return {
           installed: false
         }
       }
     },
-    purge(packages) {
+    purge(repos) {
       return aptLogger.waitFor(
-        'Purge packages ' + packages.green,
-        ssh.aptGet.purge(packages + ' -y')
+        'Purge repos ' + repos.green,
+        aptGet.purge(repos + ' -y')
       )
     }
   }

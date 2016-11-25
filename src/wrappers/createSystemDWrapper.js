@@ -3,7 +3,7 @@ const firstLineRegex = new RegExp('● ([\\w\\.\\-]+) \\- ([\\w\\s\\.\\-]+)')
 const loadedRegex = new RegExp('Loaded\\: ([\\w]+) \\(([\\w\\/\\.\\-]+)\\; ([\\w]+)')
 const activeRegex = new RegExp('Active\\: ([\\w]+) \\(([\\w]+)\\) since [\\w]+ ([\\d\\-\\s\\:]+ [\\w\\/\\_]+)')
 
-export function createSystemDWrapper(logger, ssh) {
+export function createSystemDWrapper({logger, ssh}) {
   const systemdLogger = logger.createSubLogger(`[[blue:SystemD]]`)
   const systemctl = ssh.wrapCommand('systemctl', {
     methods: ['enable', 'disable', 'start', 'stop', 'status', 'restart'],

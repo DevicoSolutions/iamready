@@ -57,7 +57,7 @@ export function createSshAdapter(configuration) {
           if (line.indexOf('[sudo] password') !== -1) {
             stream.write(configuration.password + '\n')
           } else {
-            output.stdout.push(chunk)
+            output.stdout.push(chunk.toString().replace(/\r/g, '')) // Remove \r from end of line
           }
         })
         stream.stderr.on('data', function(chunk) {

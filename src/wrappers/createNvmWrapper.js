@@ -1,15 +1,15 @@
 
-export function createNvmWrapper(logger, ssh) {
+export function createNvmWrapper({logger, ssh}) {
   const nvmLogger = logger.createSubLogger(`[[blue:NVM]]`)
   return {
-    install() {
+    installNvm() {
       return nvmLogger.waitFor(
         'Installing [green:NVM]',
         ssh.wget('-qO- https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash'),
         '[green:NVM] installed'
       )
     },
-    installNode(version = 6) {
+    install(version = 6) {
       return nvmLogger.waitFor(
         `Installing [green:nodeJs] [yellow:${version}]`,
         ssh.source(`~/.nvm/nvm.sh && nvm install ${version}`),

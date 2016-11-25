@@ -2,7 +2,7 @@ import Logger from '../utils/logger'
 
 const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\\.\\d\\+\\-]+)[\\s]+([\\w\\d]+)[\\s]+([\\w\\d\\-\\.\\:\\s\\,]+)')
 
-export function createMariaDbWrapper(logger, ssh, app) {
+export function createMariaDbWrapper({logger, ssh, config}) {
   const mariaLogger = logger.createSubLogger(`[[blue:MariaDb]]`)
   const mariadbadmin = ssh.wrapCommand('mysqladmin', {
     sudo: true,
@@ -15,7 +15,7 @@ export function createMariaDbWrapper(logger, ssh, app) {
       DEBIAN_FRONTEND: 'noninteractive'
     }
   }, false)
-  const {rootUser = 'root', rootPassword, username, password, database} = app.config.mariadb
+  const {rootUser = 'root', rootPassword, username, password, database} = config.config.mariadb
 
   async function querySudo(sql) {
     try {
