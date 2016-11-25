@@ -8,45 +8,12 @@ const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'wh
 export function createSshAdapter(configuration) {
   const connection = new Client
   let ready = false
-  let underExecution = false
-  let queue = [
-
-  ]
   configuration = {
-    ...configuration,
-    tryKeyboard: true
-  }
-
-  async function executeQueue() {
-    if (!queue.length) {
-      return
-    }
-    underExecution = true
-    do {
-      const query = queue.shift()
-      try {
-        let result
-        switch(query.type) {
-          case SHELL_COMMAND: 
-            result = await connection.exec(query.text, [], query.options)
-            break
-          case DIRECTORY_LIST:
-            result = await executeList(query)
-            break
-        }
-        query.resolve(result) 
-      } catch (err) {
-        query.reject(err)
-      }
-    } while (queue.length)
-    underExecution = false
+    ...configuration
   }
 
   function onReady() {
     ready = true
-    if (queue.length) {
-      executeQueue()
-    }
   }
 
   const readyPromise = connection.connect(configuration).then(
@@ -78,6 +45,9 @@ export function createSshAdapter(configuration) {
     if (options.cwd) {
       // NOTE: Output piping cd command to hide directory non-existent errors
       command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
+    }
+    if (options.env) {
+      command = Object.keys(options.env).map(key => `${key}=${options.env[key]}`).join(' ') + ' ' + command
     }
     const output = { stdout: [], stderr: [] }
     return await new Promise(function(resolve, reject) {
@@ -147,17 +117,11 @@ export function createSshAdapter(configuration) {
       defaultOptions.pty = pty
     }
     target[name] = (...params) => {
-      if (defaultOptions.env) {
-        action = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + action
-      }
       return execCommand(action + params.join(' '), defaultOptions)
     }
     if (configuration.username !== 'root') {
       target[name].sudo = (...params) => {
         const sudoAction = 'sudo ' + action
-        if (defaultOptions.env) {
-          sudoAction = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + sudoAction
-        }
         return execCommand(sudoAction + params.join(' '), {...defaultOptions, pty})
       }
     } else {
