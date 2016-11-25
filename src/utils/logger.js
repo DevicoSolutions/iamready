@@ -11,21 +11,21 @@ export function createLogger(prefix = "") {
     waitFor(text, promise, onSuccess = "", onFail = "") {
       let i = 0
       this.log('  ' + text, false)
-      // const interval = setInterval(() => {
-      //   // process.stdout.clearLine()
-      //   // process.stdout.cursorTo(0)
-      //   i = (i + 1) % (splinner.length - 2)
-      //   var dots = splinner[i - 1] + ' '
-      //   this.log(dots.cyan + text, false)
-      // }, 300)
+      const interval = setInterval(() => {
+        process.stdout.clearLine()
+        process.stdout.cursorTo(0)
+        i = (i + 1) % 7
+        var dots = splinner[i] + ' '
+        this.log(dots.cyan + text, false)
+      }, 300)
       const clear = () => {
-        // clearInterval(interval)
-        // process.stdout.clearLine()
-        // process.stdout.cursorTo(0)
+        clearInterval(interval)
+        process.stdout.clearLine()
+        process.stdout.cursorTo(0)
       }
       promise.then(
         () => {
-          // clear()
+          clear()
           onSuccess != "" && this.log('✓ '.green + onSuccess)
         },
         () => {

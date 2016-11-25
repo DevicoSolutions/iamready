@@ -42,6 +42,12 @@ export function createSshAdapter(configuration) {
 
   function onReady() {
     ready = true
+    // connection.once('session', accept => {
+    //   const session = accept()
+    //   session.once('pty', (...opts) => {
+    //     console.log(...opts)
+    //   })
+    // })
     if (queue.length) {
       executeQueue()
     }
@@ -62,6 +68,15 @@ export function createSshAdapter(configuration) {
     }
   }
 
+  const pty = {
+    rows: 220,
+    cols: 150,
+    width: 0,
+    height: 0,
+    term: 'vt220',
+    modes: {}
+  }
+
   async function execCommand(givenCommand: string, options: { cwd?: string, stdin?: string } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
     if (options.cwd) {
@@ -72,12 +87,10 @@ export function createSshAdapter(configuration) {
     return await new Promise(function(resolve, reject) {
       connection.connection.exec(command, options, generateCallback(function(stream) {
         stream.on('data', function(chunk) {
-          chunk = chunk.toString()
-          if (chunk.indexOf('[sudo] password') !== -1) {
-            stream.write(configuration.password)
-            stream.end()
+          const line = chunk.toString()
+          if (line.indexOf('[sudo] password') !== -1) {
+            stream.write(configuration.password + '\n')
           }
-          console.log(chunk)
           output.stdout.push(chunk)
         })
         stream.stderr.on('data', function(chunk) {
@@ -113,14 +126,14 @@ export function createSshAdapter(configuration) {
     wrapCommand(command, defaultOptions = {}) {
       if (defaultOptions.sudo && configuration.username !== 'root') {
         command = 'sudo ' + command
-        defaultOptions.pty = true
+        defaultOptions.pty = pty
       }
       if (defaultOptions.env) {
         command = Object.keys(defaultOptions.env).map(key => `${key}=${defaultOptions.env[key]}`).join(' ') + ' ' + command
       }
       const client = {
         exec(instruction, args = [], options = {}) {
-          return connection.exec(command + ' ' + instruction, args, {...defaultOptions, ...options})
+          return execCommand(command + ' ' + instruction + args.join(' '), {...defaultOptions, ...options})
         },
         execCommand(instruction, options = {}) {
           return execCommand(command + ' ' + instruction, {...defaultOptions, ...options})

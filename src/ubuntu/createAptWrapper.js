@@ -54,11 +54,12 @@ export function createAptWrapper(logger, ssh) {
       )
     },
     async getInfo(packageName) {
-      const {stdout: output} = await aptLogger.waitFor(
+      let {stdout: output, code} = await aptLogger.waitFor(
         'Getting info about package ' + packageName.green,
-        dpkg.exec('dpkg -l ' + packageName + ' | sudo grep ' + packageName)
+        dpkg.execCommand('-l ' + packageName + ' | grep ' + packageName)
       )
-      if (versionOutputRegex.test(output)) {
+      output = output.split('\n').pop()
+      if (code == 0 && versionOutputRegex.test(output)) {
         const [, name, version, arch, description] = output.match(versionOutputRegex)
         aptLogger.log('  ' + packageName.green + ' already installed with version ' + version.yellow)
         return {

@@ -5,35 +5,35 @@ const activeRegex = new RegExp('Active\\: ([\\w]+) \\(([\\w]+)\\) since [\\w]+ (
 
 export function createSystemDWrapper(logger, ssh) {
   const systemdLogger = logger.createSubLogger(`[[blue:SystemD]]`)
-
-  async function execute(tool, command, argument = null) {
-    try {
-      return await ssh.execute(`DEBIAN_FRONTEND=noninteractive ${tool} --output=json ${command} ${argument || ""}`)
-    } catch (err) {
-      throw err
-    }
-  }
+  const systemctl = ssh.wrapCommand('systemctl', {
+    methods: ['enable', 'disable', 'start', 'stop', 'status', 'restart'],
+    sudo: true
+  })
 
   return {
     async enable(service) {
-      try {
-        return await systemdLogger.waitFor('Enabling service ' + service.green, execute('systemctl', 'enable', service), 'Service ' + service.green + ' enabled')
-      } catch(err) {
-        return true
-      }
+      return systemdLogger.waitFor(
+        'Enabling service ' + service.green,
+        systemctl.enable(service),
+        'Service ' + service.green + ' enabled'
+      )
     },
     async disable(service) {
-      try {
-        return await systemdLogger.waitFor('Disabling service ' + service.green, execute('systemctl', 'disable', service), 'Service ' + service.green + ' disabled')
-      } catch(err) {
-        return true
-      }
+      systemdLogger.waitFor(
+        'Disabling service ' + service.green,
+        systemctl.disable(service),
+        'Service ' + service.green + ' disabled'
+      )
     },
     start(service) {
-      return systemdLogger.waitFor('Starting service ' + service.green, execute('systemctl', 'start', service), 'Service ' + service.green + ' started')
+      return systemdLogger.waitFor(
+        'Starting service ' + service.green,
+        systemctl.start(service),
+        'Service ' + service.green + ' started'
+      )
     },
     async status(service) {
-      const output = await systemdLogger.waitFor('Getting status for service ' + service.green, execute('systemctl', 'status', service))
+      const {stdout: output} = await systemdLogger.waitFor('Getting status for service ' + service.green, systemctl.status(service))
       return output.split('\n').reduce((target, line, index) => {
         if (firstLineRegex.test(line)) {
           const [,name, description] = line.match(firstLineRegex)
@@ -64,10 +64,18 @@ export function createSystemDWrapper(logger, ssh) {
       }, {})
     },
     stop(service) {
-      return systemdLogger.waitFor('Stoping service ' + service.green, execute('systemctl', 'stop', service), 'Service ' + service.green + ' stoped')
+      return systemdLogger.waitFor(
+        'Stoping service ' + service.green,
+        systemctl.stop(service),
+        'Service ' + service.green + ' stoped'
+      )
     },
     restart(service) {
-      return systemdLogger.waitFor('Restarting service ' + service.green, execute('systemctl', 'restart', service), 'Service ' + service.green + ' restarted')
+      return systemdLogger.waitFor(
+        'Restarting service ' + service.green,
+        systemctl.restart(service),
+        'Service ' + service.green + ' restarted'
+      )
     }
   }
 }
