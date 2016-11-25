@@ -38,10 +38,10 @@ export function createNvmWrapper(logger, ssh) {
       if (environment.indexOf(nodeDir) === -1) {
         // Clear old versions
         environment = environment.split(':').filter(part => part.indexOf('.nvm') === -1).join(':')
-        environment = environment.replace('PATH="', `PATH="${nodeDir}:`)
+        environment = environment.replace('PATH="', `PATH="${nodeDir}:`).replace(/\"/g, '\\"')
         await nvmLogger.waitFor(
           'Setting [cyan:/etc/environment] content',
-          ssh.echo.sudo(`'${environment}' > /etc/environment`),
+          ssh.sh.sudo(`-c "echo '${environment}' > /etc/environment"`),
           `[cyan:/etc/environment] updated for [yellow:${nodeDir}]`
         )
       }

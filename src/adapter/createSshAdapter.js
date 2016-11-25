@@ -3,7 +3,7 @@ import Client from 'node-ssh'
 const SHELL_COMMAND = 'SHELL_COMMAND'
 const DIRECTORY_LIST = 'DIRECTORY_LIST'
 
-const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git']
+const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git', 'sh']
 
 export function createSshAdapter(configuration) {
   const connection = new Client
