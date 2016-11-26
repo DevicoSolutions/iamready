@@ -1,7 +1,7 @@
 /** @flow */
 import type {Logger} from '../types'
 
-const colorPartRegexp = new RegExp('\\[([\\w]+)\\:([\\w\\d\\s\\:\\/\\.\\-\\;\\(\\)]+)\\]', 'g')
+const colorPartRegexp = new RegExp('\\[([\\w]+)\\:([\\w\\d\\s\\:\\|\\\\\/\\.\\-\\;\\(\\)]+)\\]', 'g')
 const splinner = ['|', '/', '-', '\\', '|', '/', '-', '\\']
 
 export function createLogger(prefix: string = ''): Logger {
