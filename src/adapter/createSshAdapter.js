@@ -1,11 +1,10 @@
+/** @flow */
 import Client from 'node-ssh'
-
-const SHELL_COMMAND = 'SHELL_COMMAND'
-const DIRECTORY_LIST = 'DIRECTORY_LIST'
+import type {Logger, SshContext, ExecOptions} from '../types'
 
 const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git', 'sh']
 
-export function createSshAdapter(configuration) {
+export function createSshAdapter(configuration: {[key: string]: any}, logger: Logger): SshContext {
   const connection = new Client
   let ready = false
   configuration = {
@@ -18,7 +17,7 @@ export function createSshAdapter(configuration) {
 
   const readyPromise = connection.connect(configuration).then(
     onReady,
-    err => console.log('Error', err)
+    err => logger.log('Error', err)
   )
 
   function generateCallback(resolve: Function, reject: Function): Function {
@@ -40,19 +39,19 @@ export function createSshAdapter(configuration) {
     modes: {}
   }
 
-  async function execCommand(givenCommand: string, options: { cwd?: string, stdin?: string } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
+  async function execCommand(givenCommand: string, options: ExecOptions = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
     if (options.cwd) {
       // NOTE: Output piping cd command to hide directory non-existent errors
-      command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
+      command = `cd ${options.cwd} 1> /dev/null 2> /dev/null; ${command}`
     }
-    if (options.env) {
-      command = Object.keys(options.env).map(key => `${key}=${options.env[key]}`).join(' ') + ' ' + command
+    if (typeof options.env === 'object') {
+      command = Object.keys(options.env).map(key => `${key}=${ options.env && options.env[key] || ''}`).join(' ') + ' ' + command
     }
     const output = { stdout: [], stderr: [] }
-    return await new Promise(function(resolve, reject) {
-      connection.connection.exec(command, {pty, ...options}, generateCallback(function(stream) {
-        stream.on('data', function(chunk) {
+    return await new Promise((resolve, reject) => {
+      connection.connection.exec(command, {pty, ...options}, generateCallback(stream => {
+        stream.on('data', chunk => {
           const line = chunk.toString()
           if (line.indexOf('[sudo] password') !== -1) {
             stream.write(configuration.password + '\n')
@@ -60,20 +59,24 @@ export function createSshAdapter(configuration) {
             output.stdout.push(chunk.toString().replace(/\r/g, '')) // Remove \r from end of line
           }
         })
-        stream.stderr.on('data', function(chunk) {
-          output.stderr.push(chunk)
-        })
+        stream.stderr.on('data', chunk => output.stderr.push(chunk))
         if (options.stdin) {
           stream.write(options.stdin)
           stream.end()
         }
-        stream.on('close', function(code, signal) {
+        stream.on('close', (code, signal) => {
           resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
         })
       }, reject))
     })
   }
 
+  // $FlowIgnore stub before populate
+  function emptyCommand() {
+
+  }
+  // $FlowIgnore stub before populate
+  emptyCommand.sudo = () => {}
   const adapter = {
     isReady: () => ready,
     ready() {
@@ -93,6 +96,7 @@ export function createSshAdapter(configuration) {
     end() {
       connection.dispose()
     },
+    cat: emptyCommand, ls: emptyCommand, rm: emptyCommand, mkdir: emptyCommand, cd: emptyCommand, echo: emptyCommand, source: emptyCommand, which: emptyCommand, wget: emptyCommand, git: emptyCommand, sh: emptyCommand,
     wrapCommand(command, defaultOptions = {}, inject = true) {
       if (typeof defaultOptions === 'number') { // Fix for array index
         defaultOptions = {}
@@ -100,33 +104,32 @@ export function createSshAdapter(configuration) {
       if (typeof inject === 'object') {
         inject = true
       }
-      let target = inject ? adapter : {}
+      const target = inject ? adapter : {}
       const name = command.indexOf('-') === -1 ? command : command.replace(/\-([a-z])/g, (_, part) => part.toUpperCase())
       injectMethods(target, command, '', defaultOptions)
       if (defaultOptions.methods) {
+        // $FlowIgnore WAT?
         defaultOptions.methods.forEach(method => injectMethods(target[name], method, command, defaultOptions))
       }
       return target[name]
     }
   }
 
-  function injectMethods(target, method, command = '', defaultOptions = {}) {
+  function injectMethods(target, method, command = '', defaultOptions: ExecOptions = {}) {
     const name = method.indexOf('-') === -1 ? method : method.replace(/\-([a-z])/g, (_, part) => part.toUpperCase())
     let action = command != '' ? command + ' ' + method + ' ' : method + ' '
     if (defaultOptions.sudo && configuration.username !== 'root') {
       action = 'sudo ' + action
     }
-    target[name] = (...params) => {
+    function comm(...params) {
       return execCommand(action + params.join(' '), defaultOptions)
     }
     if (configuration.username !== 'root') {
-      target[name].sudo = (...params) => {
-        const sudoAction = 'sudo ' + action
-        return execCommand(sudoAction + params.join(' '), defaultOptions)
-      }
+      comm.sudo = (...params) => execCommand('sudo ' + action + params.join(' '), defaultOptions)
     } else {
-      target[name].sudo = target[name]
+      comm.sudo = target[name]
     }
+    target[name] = comm
   }
 
   oneLineCommands.forEach(adapter.wrapCommand)

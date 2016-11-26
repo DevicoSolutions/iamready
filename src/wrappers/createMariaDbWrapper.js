@@ -1,8 +1,8 @@
-import Logger from '../utils/logger'
+/** @flow */
+import type {SetupContext, MariaDbContext} from '../types'
 
-const versionOutputRegex = new RegExp('[\\w]+[\\s]+([\\w\\-\\.]+)[\\s]+([\\w\\:\\.\\d\\+\\-]+)[\\s]+([\\w\\d]+)[\\s]+([\\w\\d\\-\\.\\:\\s\\,]+)')
-
-export function createMariaDbWrapper({logger, ssh, config}) {
+export function createMariaDbWrapper(ctx: SetupContext): MariaDbContext {
+  const {logger, ssh, config} = ctx
   const mariaLogger = logger.createSubLogger(`[[blue:MariaDb]]`)
   const mariadbadmin = ssh.wrapCommand('mysqladmin', {
     sudo: true,

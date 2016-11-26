@@ -1,5 +1,8 @@
+/** @flow */
+import type {SetupContext, NodeContext} from '../types'
 
-export function createNvmWrapper({logger, ssh}) {
+export function createNvmWrapper(ctx: SetupContext): NodeContext {
+  const {logger, ssh} = ctx
   const nvmLogger = logger.createSubLogger(`[[blue:NVM]]`)
   return {
     installNvm() {
@@ -23,7 +26,7 @@ export function createNvmWrapper({logger, ssh}) {
       )
     },
     async getNodeDir(version = 6) {
-      const {stdout, stderr} = await nvmLogger.waitFor(
+      const {stdout} = await nvmLogger.waitFor(
         'Looking for [green:nodeJs] bin directory',
         ssh.source(`~/.nvm/nvm.sh && nvm use ${version} && echo $PATH`)
       )

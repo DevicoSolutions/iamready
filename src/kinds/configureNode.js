@@ -1,5 +1,8 @@
+/** @flow */
+import type {SetupContext} from '../types'
 
-export async function configureNode({node, config}) {
+export async function configureNode(ctx: SetupContext) {
+  const {node, config} = ctx
   const nodeConfig = config.config.node || {
     version: 6
   }

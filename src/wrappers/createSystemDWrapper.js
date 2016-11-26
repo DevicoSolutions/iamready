@@ -1,9 +1,12 @@
+/** @flow */
+import type {SetupContext, ServiceContext} from '../types'
 
 const firstLineRegex = new RegExp('● ([\\w\\.\\-]+) \\- ([\\w\\s\\.\\-]+)')
 const loadedRegex = new RegExp('Loaded\\: ([\\w]+) \\(([\\w\\/\\.\\-]+)\\; ([\\w]+)')
 const activeRegex = new RegExp('Active\\: ([\\w]+) \\(([\\w]+)\\) since [\\w]+ ([\\d\\-\\s\\:]+ [\\w\\/\\_]+)')
 
-export function createSystemDWrapper({logger, ssh}) {
+export function createSystemDWrapper(ctx: SetupContext): ServiceContext {
+  const {logger, ssh} = ctx
   const systemdLogger = logger.createSubLogger(`[[blue:SystemD]]`)
   const systemctl = ssh.wrapCommand('systemctl', {
     methods: ['enable', 'disable', 'start', 'stop', 'status', 'restart'],
@@ -13,28 +16,28 @@ export function createSystemDWrapper({logger, ssh}) {
   return {
     async enable(service) {
       return systemdLogger.waitFor(
-        'Enabling service ' + service.green,
+        'Enabling service ' + `[green:${service}]`,
         systemctl.enable(service),
-        'Service ' + service.green + ' enabled'
+        'Service ' + `[green:${service}]` + ' enabled'
       )
     },
     async disable(service) {
-      systemdLogger.waitFor(
-        'Disabling service ' + service.green,
+      return systemdLogger.waitFor(
+        'Disabling service ' + `[green:${service}]`,
         systemctl.disable(service),
-        'Service ' + service.green + ' disabled'
+        'Service ' + `[green:${service}]` + ' disabled'
       )
     },
     start(service) {
       return systemdLogger.waitFor(
-        'Starting service ' + service.green,
+        'Starting service ' + `[green:${service}]`,
         systemctl.start(service),
-        'Service ' + service.green + ' started'
+        'Service ' + `[green:${service}]` + ' started'
       )
     },
     async status(service) {
-      const {stdout: output} = await systemdLogger.waitFor('Getting status for service ' + service.green, systemctl.status(service))
-      return output.split('\n').reduce((target, line, index) => {
+      const {stdout: output} = await systemdLogger.waitFor('Getting status for service ' + `[green:${service}]`, systemctl.status(service))
+      return output.split('\n').reduce((target, line) => {
         if (firstLineRegex.test(line)) {
           const [,name, description] = line.match(firstLineRegex)
           target = {
@@ -65,16 +68,16 @@ export function createSystemDWrapper({logger, ssh}) {
     },
     stop(service) {
       return systemdLogger.waitFor(
-        'Stoping service ' + service.green,
+        'Stoping service ' + `[green:${service}]`,
         systemctl.stop(service),
-        'Service ' + service.green + ' stoped'
+        'Service ' + `[green:${service}]` + ' stoped'
       )
     },
     restart(service) {
       return systemdLogger.waitFor(
-        'Restarting service ' + service.green,
+        'Restarting service ' + `[green:${service}]`,
         systemctl.restart(service),
-        'Service ' + service.green + ' restarted'
+        'Service ' + `[green:${service}]` + ' restarted'
       )
     }
   }

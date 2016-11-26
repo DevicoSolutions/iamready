@@ -1,5 +1,7 @@
+/** @flow */
 import {registerWrapper, setupContext} from '../wrappers'
 import {createAptWrapper} from './createAptWrapper'
+import type {SetupContext} from '../types'
 
 const ltsReleases = [
   '16.04',
@@ -12,13 +14,13 @@ const supportedReleases = [
   '17.04'
 ]
 
-export async function setupUbuntu(ctx) {
+export async function setupUbuntu(ctx: SetupContext) {
   const {distro, logger} = ctx
   if (supportedReleases.indexOf(distro.release) === -1) {
     throw new Error('We don\'t support this version of Ubuntu ' + distro.release)
   }
   if (ltsReleases.indexOf(distro.release) === -1) {
-    logger.log(`We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use [yellow:${distro.release}] version`.red)
+    logger.log(`[red:We recommend you to use LTS version of Ubuntu for servers to receive security updates and bug fixes. You use] [yellow:${distro.release}] [red:version]`)
   }
 
   registerWrapper('repo', createAptWrapper)

@@ -1,9 +1,10 @@
-import fs from 'fs'
+/** @flow */
 import {createSshAdapter} from './adapter/createSshAdapter'
 import {setupUbuntu} from './ubuntu/setupUbuntu'
 import 'colors'
 import Logger, {createLogger} from './utils/logger'
 import {getKinds} from './kinds'
+import type {SetupContext} from './types'
 
 const UBUNTU = 'Ubuntu'
 
@@ -17,23 +18,28 @@ async function detectDistro(ssh) {
   }
 }
 
-function loadConfiguration() {
+function loadConfiguration(): {[key: string]: any} {
+  if (!process.env.PWD) {
+    throw new Error('Please run from folder with env.js file')
+  }
   const path = process.env.PWD + '/env.js'
+  // $FlowIgnore must validate that path exists
   return require(path)
 }
 
 async function setup() {
   const configuration = loadConfiguration()
-  for (let key in configuration.servers) {
+  for (const key in configuration.servers) {
     const serverTypeLogger = createLogger(`[[magenta:${key}]]`)
     const config = configuration.servers[key]
-    for (let credential of config.credentials) {
+    for (const credential of config.credentials) {
       const serverLogger = serverTypeLogger.createSubLogger(`[[magenta:Server ${credential.host}]]`)
-      const ssh = createSshAdapter(credential)
+      const ssh = createSshAdapter(credential, serverLogger)
       await ssh.ready()
-      const distro = await serverLogger.waitFor('Detecting distro'.green, detectDistro(ssh))
+      const distro = await serverLogger.waitFor('[green:Detecting distro]', detectDistro(ssh))
       serverLogger.log(`Found [green:${distro.name}] [yellow:${distro.release}]`)
-      const ctx = {distro, ssh, config, logger: serverLogger}
+      // $FlowIgnore should be populated by distro
+      const ctx: SetupContext = {distro, ssh, config, logger: serverLogger}
       switch(distro.name) {
         case UBUNTU:
           await setupUbuntu(ctx)
@@ -50,7 +56,7 @@ async function setup() {
 async function configure(ctx) {
   ctx.repo.install('vim git curl htop')
   const kinds = getKinds()
-  for (let kind of ctx.config.kinds) {
+  for (const kind of ctx.config.kinds) {
     if (kinds.has(kind)) {
       await kinds.get(kind)(ctx)
     } else {
@@ -60,6 +66,6 @@ async function configure(ctx) {
 }
 
 setup().then(
-  data => console.log('done'),
-  err => console.log(err)
+  () => Logger.log('done'),
+  err => Logger.log(err)
 )

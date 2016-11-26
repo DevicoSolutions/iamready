@@ -1,5 +1,8 @@
+/** @flow */
+import type {SetupContext} from '../types'
 
-export async function configureMariaDb({repo, service, mariadb, config}) {
+export async function configureMariaDb(ctx: SetupContext) {
+  const {repo, service, mariadb, config} = ctx
   const mariadbInfo = await repo.getInfo('mariadb-server')
   const {rootUser = 'root', rootPassword, username, password, database} = config.config.mariadb
   if (!mariadbInfo.installed) {

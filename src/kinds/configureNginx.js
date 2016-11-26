@@ -1,5 +1,8 @@
+/** @flow */
+import type {SetupContext} from '../types'
 
-export async function configureNginx({repo, service, distro, config}) {
+export async function configureNginx(ctx: SetupContext) {
+  const {repo, service, distro} = ctx
   if (distro.name === 'Ubuntu') {
     await repo.addRepository('ppa:nginx/stable') // Latest version for Ubuntu
   }
