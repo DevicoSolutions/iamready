@@ -28,7 +28,7 @@ export function createAptWrapper(ctx: SetupContext): SetupRepoContext {
 
   async function execute(tool, command, argument = null) {
     try {
-      return await ssh.execCommand(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y --allow-unauthenticated`, {})
+      return await ssh.execCommand(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y`, {})
     } catch (err) {
       throw err
     }
@@ -37,8 +37,8 @@ export function createAptWrapper(ctx: SetupContext): SetupRepoContext {
   return {
     install(packages) {
       return aptLogger.waitFor(
-        `Installing repos [green:${packages}]`,
-        aptGet.install(packages + ' -y'),
+        `Installing [green:${packages}]`,
+        aptGet.install(packages + ' --allow-unauthenticated -y'),
         `Installed [green:${packages}]`
       )
     },
