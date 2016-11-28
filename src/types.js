@@ -17,6 +17,7 @@ export type PackageInfo = {
 
 export type SetupRepoContext = {
   install(packages: string): Promise<ShellResponse>,
+  addKey(key: string): Promise<ShellResponse>,
   addRepository(repo: string): Promise<ShellResponse>,
   update(): Promise<ShellResponse>,
   upgrade(): Promise<ShellResponse>,
@@ -51,6 +52,7 @@ export type SshContext = {
   ready(): Promise<any>,
   execute(text: string, options: ExecOptions): Promise<string>,
   execCommand(...options: Array<any>): Promise<ShellResponse>,
+  putFile(local: string, endPoint: string): Promise<*>,
   end(): void,
   wrapCommand(command: string, defaultOptions: ExecOptions, inject?: boolean): Command,
   cat: Command,
@@ -63,7 +65,8 @@ export type SshContext = {
   which: Command,
   wget: Command,
   git: Command,
-  sh: Command
+  sh: Command,
+  mv: Command
 }
 
 export type MariaDbContext = {

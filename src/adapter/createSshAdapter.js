@@ -2,7 +2,7 @@
 import Client from 'node-ssh'
 import type {Logger, SshContext, ExecOptions} from '../types'
 
-const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git', 'sh']
+const oneLineCommands = ['cat', 'ls', 'rm', 'mkdir', 'cd', 'echo', 'source', 'which', 'wget', 'git', 'sh', 'mv']
 
 export function createSshAdapter(configuration: {[key: string]: any}, logger: Logger): SshContext {
   const connection = new Client
@@ -91,12 +91,15 @@ export function createSshAdapter(configuration: {[key: string]: any}, logger: Lo
       }
     },
     execCommand(...options) {
-      return connection.execCommand(...options)
+      return execCommand(...options)
     },
     end() {
       connection.dispose()
     },
-    cat: emptyCommand, ls: emptyCommand, rm: emptyCommand, mkdir: emptyCommand, cd: emptyCommand, echo: emptyCommand, source: emptyCommand, which: emptyCommand, wget: emptyCommand, git: emptyCommand, sh: emptyCommand,
+    putFile(local, endPoint) {
+      return connection.putFile(local, endPoint)
+    },
+    cat: emptyCommand, ls: emptyCommand, rm: emptyCommand, mkdir: emptyCommand, cd: emptyCommand, echo: emptyCommand, source: emptyCommand, which: emptyCommand, wget: emptyCommand, git: emptyCommand, sh: emptyCommand, mv: emptyCommand,
     wrapCommand(command, defaultOptions = {}, inject = true) {
       if (typeof defaultOptions === 'number') { // Fix for array index
         defaultOptions = {}

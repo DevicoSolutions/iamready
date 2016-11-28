@@ -13,6 +13,13 @@ export function createAptWrapper(ctx: SetupContext): SetupRepoContext {
       DEBIAN_FRONTEND: 'noninteractive'
     }
   }, false)
+  const aptKey = ssh.wrapCommand('apt-key', {
+    methods: ['adv'],
+    duso: true,
+    env: {
+      DEBIAN_FRONTEND: 'noninteractive'
+    }
+  })
   const dpkg = ssh.wrapCommand('dpkg', {
     env: {
       DEBIAN_FRONTEND: 'noninteractive'
@@ -41,6 +48,9 @@ export function createAptWrapper(ctx: SetupContext): SetupRepoContext {
         execute('add-apt-repository', 'ppa:nginx/stable'),
         `[green:${repo}] repo added`
       )
+    },
+    addKey(key) {
+      return aptKey.adv(key)
     },
     update() {
       return aptLogger.waitFor('Updating repos list', aptGet.update(' -y'))
