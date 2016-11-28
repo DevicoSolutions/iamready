@@ -7,7 +7,7 @@ export async function configureMongo(ctx: SetupContext) {
   if (!mongoInfo.installed) {
     if (distro.name === 'Ubuntu') {
       await repo.addKey('--keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927')
-      await ssh.echo.sudo('"deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list')
+      await ssh.sh.sudo(`-c "echo 'deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse' > /etc/apt/sources.list.d/mongodb-org-3.2.list"`)
     }
     await repo.update()
     await repo.install('mongodb-org')

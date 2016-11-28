@@ -28,7 +28,7 @@ export function createAptWrapper(ctx: SetupContext): SetupRepoContext {
 
   async function execute(tool, command, argument = null) {
     try {
-      return await ssh.execCommand(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y`, {})
+      return await ssh.execCommand(`DEBIAN_FRONTEND=noninteractive ${tool} ${command} ${argument || ""} -y --allow-unauthenticated`, {})
     } catch (err) {
       throw err
     }

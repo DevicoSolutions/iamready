@@ -71,12 +71,10 @@ export function createSshAdapter(configuration: {[key: string]: any}, logger: Lo
     })
   }
 
-  // $FlowIgnore stub before populate
   function emptyCommand() {
-
+    throw new Error('Wrong action')
   }
-  // $FlowIgnore stub before populate
-  emptyCommand.sudo = () => {}
+  emptyCommand.sudo = () => {throw new Error('Wrong action')}
   const adapter = {
     isReady: () => ready,
     ready() {
@@ -103,8 +101,6 @@ export function createSshAdapter(configuration: {[key: string]: any}, logger: Lo
     wrapCommand(command, defaultOptions = {}, inject = true) {
       if (typeof defaultOptions === 'number') { // Fix for array index
         defaultOptions = {}
-      }
-      if (typeof inject === 'object') {
         inject = true
       }
       const target = inject ? adapter : {}
@@ -130,7 +126,7 @@ export function createSshAdapter(configuration: {[key: string]: any}, logger: Lo
     if (configuration.username !== 'root') {
       comm.sudo = (...params) => execCommand('sudo ' + action + params.join(' '), defaultOptions)
     } else {
-      comm.sudo = target[name]
+      comm.sudo = comm
     }
     target[name] = comm
   }
